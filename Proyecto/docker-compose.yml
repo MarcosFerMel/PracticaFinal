@@ -1,0 +1,75 @@
+version: '3.8'
+services:
+  mongo_container:
+    image: mongo
+    container_name: mongodb
+    volumes:
+      - ./mongo/dump:/dump
+    command: mongorestore -d mydatabase /dump
+    env_file:
+      - .env
+    networks:
+      - practica_net
+    ports:
+      - "27020:27017"  
+
+  backend_container:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    depends_on:
+      - mongo_container
+    env_file:
+      - .env
+    networks:
+      - practica_net
+
+  frontend_container:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    depends_on:
+      - backend_container
+    env_file:
+      - .env
+    networks:
+      - practica_net
+
+  adminMongo_container:
+    image: mongo-express
+    depends_on:
+      - mongo_container
+    env_file:
+      - .env
+    ports:
+      - "8081:8081"
+    networks:
+      - practica_net
+
+  loadbalancer:
+    image: nginx
+    volumes:
+      - ./loadbalancer/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - frontend_container
+      - backend_container
+    ports:
+      - "80:80"
+    networks:
+      - practica_net
+
+  webnode: 
+        container_name: ejemploapp
+        restart: always
+        build: .
+        ports: 
+            - "5000:3000"
+        links:
+          - mongo
+        volumes:
+          - .:/usr/src/app      
+
+networks:
+  practica_net:
+    driver: bridge
+
